@@ -63,7 +63,7 @@ class Profile(Base):
     student:Mapped[Student] = relationship(back_populates='profile')
     
     def __repr__(self):
-        return self.user_id.name
+        return self.address
     
 
 

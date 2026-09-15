@@ -23,13 +23,25 @@ class GroupOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StudentShort(BaseModel):
+    id: int 
+    name: str
+    age: int | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GroupDetail(GroupOut):
+    students: list[StudentShort]
+    
 
 class StudentOut(BaseModel):
     id: int
     name: str
     age: int | None
     group_id: int | None
-    group: GroupOut
+    group: GroupOut | None
+   
 
 
     model_config = ConfigDict(from_attributes=True)
