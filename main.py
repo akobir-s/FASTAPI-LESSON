@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException
-from schemas import StudentIn, StudentOut, StudentPatch, GroupIn, GroupOut, GroupDetail
+from fastapi import FastAPI, Depends, HTTPException, Query
+from schemas import StudentIn, StudentOut, StudentPatch, GroupIn, GroupOut, GroupDetail, StudentDetail
 from sqlalchemy.orm import Session, selectinload, joinedload
-from sqlalchemy import select
+from sqlalchemy import select, func
 from database import get_db
 from models import Student, Group
+from typing import Annotated, Literal
+from math import ceil
 
 
 app = FastAPI(title="Crud Api on FAstapi")
@@ -111,3 +113,52 @@ def delete(student_id:int, db:Session = Depends(get_db)):
     db.commit()
 
     
+
+
+
+
+@app.get('/students-detail', response_model=StudentDetail)
+def filter_students(
+    q: Annotated[str | None, Query(max_length=100, description='Search for students name')] = None,
+    group_id: Annotated[int | None, Query(gt=0)] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    size:Annotated[int, Query(ge=1, le=100)] = 10,
+    min_age: Annotated[int | None, Query(gt=0, le=120)] = None, # 20 
+    max_age: Annotated[int | None, Query(gt=0, le=120)] = None,
+    sort: Literal['id', 'name', 'age'] = 'id',  # 
+    order: Literal['desc', 'asc'] = 'desc',
+    db: Session = Depends(get_db)
+):
+    filters = []  
+    if q:
+        filters.append(Student.name.ilike(f'%{q}%'))
+    if group_id:
+        filters.append(Student.group_id == group_id)
+    if min_age:
+        filters.append(Student.age >= min_age)
+    if max_age:
+        filters.append(Student.age <= max_age)
+    # [1, 2, 3, ]
+    
+    total = db.scalar(select(func.count()).select_from(Student).where(*filters)) # select count(*) from student where
+
+    column = getattr(Student, sort) # Student.age
+    sort_by = column.desc() if order == 'desc' else column.asc()
+   
+    stmt = (
+        select(Student)
+        .options(joinedload(Student.group))  #  (student.group) -> joinedload
+        .where(*filters)
+        .order_by(sort_by, Student.id)       # Student.id — s
+        .offset((page - 1) * size)
+        .limit(size)
+    )
+    items = db.execute(stmt).scalars().all()
+
+    return {
+        'total': total,
+        'page': page,
+        'size': size,
+        'pages': ceil(total / size),
+        'items': items
+    }

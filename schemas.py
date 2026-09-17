@@ -50,3 +50,15 @@ class StudentOut(BaseModel):
 class StudentPatch(BaseModel):
     name: str | None = Field(max_length=55, examples=['Zafar'])
     age: int | None = Field(gt=0, lt=120)
+
+
+
+class  StudentDetail(BaseModel):
+    total: int 
+    page: int 
+    size: int 
+    pages: int 
+    items: list[StudentOut] 
+
+
+    model_config = ConfigDict(from_attributes=True)
